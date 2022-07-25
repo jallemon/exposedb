@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:java="http://www.mulesoft.org/schema/mule/java" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/java http://www.mulesoft.org/schema/mule/java/current/mule-java.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="fd43db43-fe98-4810-a857-1860c78d15b1" basePath="/" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="4a79f6a3-f7da-48ec-842c-0f00a367bb4c" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="8EwUV6hsQmx@9n8" />
+	</db:config>
+	<flow name="POSTDatabase" doc:id="5e5f2238-0e94-457d-b008-f9b86bdb9936" >
+		<http:listener doc:name="Listener" doc:id="fbac371f-7ed8-4691-89a3-81bf185fbb2f" config-ref="HTTP_Listener_config" path="/database/{systemid}/{applicationid}" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="5a721751-7d49-453d-82cb-f042a6a17a3b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.name]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="e626249d-16a7-40a0-ac53-01372126db81" config-ref="Database_Config" target="dbresult">
+			<db:sql><![CDATA[INSERT INTO meta.databases (name, systemid, applicationid) VALUES (:name, :systemid, :applicationid)]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+	"name": payload,
+	"systemid": (message.attributes.uriParams['systemid'] as Number),
+	"applicationid": (message.attributes.uriParams['applicationid'])
+}]]]></db:input-parameters>
+		</db:insert>
+		<java:new doc:name="New" doc:id="d66b1976-52ec-4de3-8f67-6ab9a32e4424" class="exposedatabase.createDB" constructor="createDB(java.lang.String)" >
+			<java:args ><![CDATA[#[{
+"name": payload
+}]]]></java:args>
+		</java:new>
+		<java:invoke method="create()" doc:name="Invoke" doc:id="9ed9dd42-e05c-4681-a370-a6f3324908e4" class="exposedatabase.createDB" instance="#[payload]"/>
+	</flow>
+	<flow name="GETDatabase" doc:id="edbca5c9-e2aa-41d9-8e97-c0fab9cd8fd8" >
+		<http:listener doc:name="Listener" doc:id="26243e0d-603c-47ea-b9ee-ad4aeb33b972" config-ref="HTTP_Listener_config" path="/database/{systemid}/{applicationid}" allowedMethods="GET">
+			<http:response >
+				<http:body ><![CDATA[#[output application/json
+---
+payload]]]></http:body>
+			</http:response>
+		</http:listener>
+		<db:select doc:name="Select" doc:id="b8297ac3-6878-48c4-922c-6b6bdfcce8e1" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT id, name FROM meta.databases
+WHERE systemid = :systemid AND applicationid = :applicationid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"systemid": (message.attributes.uriParams['systemid'] as Number),
+	"applicationid": (message.attributes.uriParams['applicationid'] as Number)
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="13be7942-52ce-44d0-98a8-33c1702ddf99" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="deletedatabase" doc:id="1e31dc08-e5b1-4656-90fa-1692bedce8fd" >
+		<http:listener doc:name="Listener" doc:id="fe3f6b51-d1aa-4089-8d9f-4f56eece006c" config-ref="HTTP_Listener_config" path="/database/{systemid}/{applicationid}" allowedMethods="DELETE"/>
+		<logger level="INFO" doc:name="Logger" doc:id="9f2ef755-8612-4eb2-a9fc-db0c8c8c745a" />
+	</flow>
+	<flow name="POSTTable" doc:id="cba84a40-7153-4ef6-9466-dbf87bae12c7" >
+		<http:listener doc:name="Listener" doc:id="f53e3710-946f-421d-9242-4ce6aabd6f78" config-ref="HTTP_Listener_config" path="/table" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="8bbc1bc6-55bc-4b27-aa4f-50146119df25" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"name": payload.name,
+	"dbid": payload.dbid
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="6b6353f5-f9eb-4f20-8285-89699967ae00" config-ref="Database_Config" target="outputvar">
+			<db:sql ><![CDATA[INSERT INTO meta.tables (name, dbid) VALUES (:name, :dbid)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[payload]]]></db:input-parameters>
+		</db:insert>
+		<db:select doc:name="Select" doc:id="6e004c47-b244-4159-aedb-9c8737b0b8f9" config-ref="Database_Config" target="dbname" transactionalAction="NOT_SUPPORTED">
+			<db:sql ><![CDATA[SELECT name FROM meta.databases WHERE id = :id LIMIT 1]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+"id":payload.dbid
+}]]]></db:input-parameters>
+		</db:select>
+		<java:new constructor="createTable(java.lang.String,java.lang.String)" doc:name="New" doc:id="921627fd-225d-4bd4-8d53-b7d534ee450f" class="exposedatabase.createTable">
+			<java:args ><![CDATA[#[{
+"dbname": vars.dbname[0].name,
+"tablename": payload.name
+}]]]></java:args>
+		</java:new>
+		<java:invoke doc:name="Invoke" doc:id="4371c9e5-21b1-4179-82c0-e3a7843bdd31" class="exposedatabase.createTable" method="create()" instance="#[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="f6544a52-f7fc-4151-9451-58366b44d1f5" />
+	</flow>
+	<flow name="GETTable" doc:id="b52c7bae-92e2-42ff-9020-99c61dbd5a74" >
+		<http:listener doc:name="Listener" doc:id="ae78f3fc-8661-42be-b779-10b442e0b83d" config-ref="HTTP_Listener_config" path="/table/{databaseid}" allowedMethods="GET" outputMimeType="application/json"/>
+		<db:select doc:name="Select" doc:id="1191c55d-b464-4cc6-8dbc-5ec120ee41a0" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT id, name FROM meta.tables
+WHERE dbid = :databaseid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"databaseid":message.attributes.uriParams['databaseid']
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="3046a3b0-60b7-4d09-9e59-6eb2cf1f6c37" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="POSTColumn" doc:id="7d79103e-6169-423a-8fac-da08ee32e9f4" >
+		<http:listener doc:name="Listener" doc:id="23028540-32bf-4b93-ac40-2fd242d98cc9" config-ref="HTTP_Listener_config" path="/column" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="2cdfae80-3d58-4539-830f-e4e1918b94e8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="6d4ae268-d493-4897-82e2-4f5aa6af5f60" config-ref="Database_Config" target="insertOutput">
+			<db:sql ><![CDATA[INSERT INTO meta.columns (name, type, tableid) VALUES (:name, :type, :tableid)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"name": payload.name,
+	"type": payload.column_type,
+	"tableid": payload.tableId
+}]]]></db:input-parameters>
+		</db:insert>
+		<java:new constructor="createColumn(java.lang.String,java.lang.String,int,int)" doc:name="New" doc:id="2fe0f7a6-fac1-4550-a195-e69d635abf52" class="exposedatabase.createColumn">
+			<java:args ><![CDATA[#[{
+	"name": payload.name,
+	"type": payload.column_type,
+	"tableId": payload.tableId,
+	"DBId": payload.DBId
+}]]]></java:args>
+		</java:new>
+		<java:invoke doc:name="Invoke" doc:id="cc133f40-ed89-4252-a5bd-05504d25b8c9" instance="#[payload]" class="exposedatabase.createColumn" method="create()"/>
+		<logger level="INFO" doc:name="Logger" doc:id="772a5d99-a65e-4510-ad7c-55fa24f3720a" />
+	</flow>
+	<flow name="exposedatabaseFlow" doc:id="b44d5cc1-6e31-463e-b027-c8272e20278e" >
+		<http:listener doc:name="Listener" doc:id="ca76efa0-66ae-411a-8351-a0fd309e6ff8" config-ref="HTTP_Listener_config" path="/column/{tableid}" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="388cd7d0-4aa1-4e17-81d5-6ba6d2de5eb7" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT name, type FROM meta.columns WHERE tableid = :tblid]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"tblid": message.attributes.uriParams['tableid']
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="d99f30f6-2e1e-4252-94af-7277f91cdc75" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="exposedatabaseFlow1" doc:id="744ce9b8-1ba2-43b0-aa12-925d8dde15c7" >
+		<http:listener doc:name="Listener" doc:id="a28fbea5-0d59-4aff-99bf-ba3976d217bf" config-ref="HTTP_Listener_config" path="/insert/{dbname}/{tablename}" allowedMethods="POST"/>
+		<db:stored-procedure doc:name="Stored procedure" doc:id="d4bfd4a3-4cf6-441e-82b9-2e589ed4e05a" config-ref="Database_Config">
+			<db:sql ><![CDATA[CALL meta.INSERTINTODB(:dbname, :tablename, :insertvalues);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"dbname": message.attributes.uriParams['dbname'],
+	"tablename": message.attributes.uriParams['tablename'],
+	"insertvalues": message.payload
+}]]]></db:input-parameters>
+		</db:stored-procedure>
+		<set-payload value="Inserted!" doc:name="Set Payload" doc:id="9e2cdad5-0e98-4ef5-8f6b-40dede3baa02" />
+	</flow>
+	<flow name="exposedatabaseFlow2" doc:id="b2cad410-ca35-429c-99b3-e3dca840c95b" >
+		<http:listener doc:name="Listener" doc:id="36f01199-9940-4dbd-9bad-68cbece64ec0" config-ref="HTTP_Listener_config" path="/select/{dbname}/{tablename}" allowedMethods="GET"/>
+		<db:stored-procedure doc:name="Stored procedure" doc:id="ae01a6c7-96a6-4f5b-b5c0-2c1310e09492" config-ref="Database_Config">
+			<db:sql ><![CDATA[CALL meta.SELECTFROMDB(:dbname, :tablename);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"dbname": message.attributes.uriParams['dbname'],
+	"tablename": message.attributes.uriParams['tablename']
+}]]]></db:input-parameters>
+		</db:stored-procedure>
+		<ee:transform doc:name="Transform Message" doc:id="fe067670-0d6a-4090-92b6-5179d69b376b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.resultSet1]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="exposedatabaseFlow3" doc:id="7f9d7760-c2f3-447d-8adb-a58a8f9b6d6e" >
+		<http:listener doc:name="Listener" doc:id="4f851a2e-0b2e-4ea3-afee-4abe7bec8b95" config-ref="HTTP_Listener_config" path="/delete/{dbname}/{tablename}"/>
+		<db:stored-procedure doc:name="Copy_of_Stored procedure" doc:id="91bb3ad9-fd6a-4832-95c7-e84be01d161b" config-ref="Database_Config" >
+			<db:sql ><![CDATA[CALL meta.DELETEFROMDB(:dbname, :tablename, :whereclause);]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	"dbname": message.attributes.uriParams['dbname'],
+	"tablename": message.attributes.uriParams['tablename'],
+	"whereclause": message.payload
+}]]]></db:input-parameters>
+		</db:stored-procedure>
+		<set-payload value="Deleted!" doc:name="Set Payload" doc:id="c18c4ddb-aaef-49c8-a7c0-c675d84f2cb9" />
+	</flow>
+</mule>

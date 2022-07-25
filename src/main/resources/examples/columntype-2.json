@@ -1,0 +1,6 @@
+{
+    "name": "address",
+    "column_type": "varchar(50)",
+    "tableId": 5,
+    "DBId": 7
+}

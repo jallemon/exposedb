@@ -1,0 +1,100 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="dbjson" format="json">
+      <types:shape format="weave" example="examples/dbjson.json"><![CDATA[%dw 2.0
+
+type dbjson = {| name: String |} {"example": "{\\\"name\\\":\\\"database 1\\\"}"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="dbnamestring" format="java">
+      <types:shape format="raml"><![CDATA[#%RAML 1.0 DataType
+type: string]]></types:shape>
+    </types:type>
+    <types:type name="newtable" format="json">
+      <types:shape format="weave" example="examples/newtable.json"><![CDATA[%dw 2.0
+
+type newtable = {|
+  name: String, 
+  dbid: Number {"typeId": "int"}
+|} {"example": "{\\\"name\\\":\\\"employees\\\",\\\"dbid\\\":5}"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="columnjson" format="json">
+      <types:shape format="weave" example="examples/columntype-2.json"><![CDATA[%dw 2.0
+
+type columnjson = {|
+  name: String, 
+  column_type: String, 
+  tableId: Number {"typeId": "int"}, 
+  DBId: Number {"typeId": "int"}
+|} {"example": "{\\\"name\\\":\\\"address\\\",\\\"column_type\\\":\\\"varchar(50)\\\",\\\"tableId\\\":5,\\\"DBId\\\":7}"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="queryjson" format="json">
+      <types:shape format="weave" example="examples/queryjson-1.json"><![CDATA[%dw 2.0
+
+type queryjson = {|
+  tablename: String, 
+  columns: String, 
+  values: String
+|} {"example": "{\\\"tablename\\\":\\\"endtoenddb.table1\\\",\\\"columns\\\":\\\"name\\\",\\\"values\\\":\\\"joshuaa\\\"}"}
+
+]]></types:shape>
+    </types:type>
+    <types:type name="dbselectoutput" format="json">
+      <types:shape format="weave" example="examples/dbselectoutput.json"><![CDATA[%dw 2.0
+
+type dbselectoutput = {|
+  resultSet1: Array<{|    id: Number {"typeId": "int"},     salary: Number {"typeId": "int"}  |}>, 
+  updateCount1: Number {"typeId": "int"}
+|} {"example": "{\\\"resultSet1\\\":[{\\\"id\\\":1,\\\"salary\\\":50000}],\\\"updateCount1\\\":0}"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#5a721751-7d49-453d-82cb-f042a6a17a3b">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="dbjson"/>
+        </types:message>
+      </types:input-event>
+      <types:output-event>
+        <types:message>
+          <types:payload type="dbnamestring"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#8bbc1bc6-55bc-4b27-aa4f-50146119df25">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="newtable"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#23028540-32bf-4b93-ac40-2fd242d98cc9">
+    <types:processor-declaration>
+      <types:output-event>
+        <types:message>
+          <types:payload type="columnjson"/>
+        </types:message>
+      </types:output-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#fe067670-0d6a-4090-92b6-5179d69b376b">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="dbselectoutput"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>
